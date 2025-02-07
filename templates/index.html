@@ -3,18 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Pose Detection (Phone Camera)</title>
+    <title>Live Pose Detection</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- CSS Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        video, img {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        canvas {
+            display: none; /* Hidden since it's used only for capturing frames */
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
 </head>
 <body>
-    <h1>Live Pose Detection (Phone Camera)</h1>
 
-    <!-- Capture video from the phone camera -->
-    <video id="video" autoplay playsinline></video>
+    <h1>📷 Live Pose Detection</h1>
+
+    <div class="container">
+
+        <!-- Camera Preview from Phone -->
+        <div class="video-container">
+            <h2>🎥 Phone Camera</h2>
+            <video id="video" autoplay playsinline></video>
+        </div>
+
+        <!-- Processed Video from Flask -->
+        <div class="video-container">
+            <h2>🔍 Processed Video</h2>
+            <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Processed video feed">
+        </div>
+
+    </div>
+
     <canvas id="canvas"></canvas>
 
-    <!-- Display processed video from Flask -->
-    <h2>Processed Video:</h2>
-    <img id="videoFeed" src="{{ url_for('video_feed') }}" width="640" height="480">
+    <p class="footer">Developed with ❤️ by Savvas Neofytou</p>
 
     <script>
         const video = document.getElementById('video');
@@ -43,5 +116,6 @@
 
         setInterval(sendFrame, 100);  // Send frames every 100ms
     </script>
+
 </body>
 </html>
