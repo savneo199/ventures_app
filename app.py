@@ -1,37 +1,84 @@
+from flask import Flask, request, render_template, Response
 import cv2
 import mediapipe as mp
-from mediapipe.tasks.python import vision
+import numpy as np
+import base64
+import threading
 
-# Initialize MediaPipe Pose model
+app = Flask(__name__)
+
+# Initialize MediaPipe Pose
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose()
 
-# Open Webcam
-cap = cv2.VideoCapture(0)
+latest_frame = None  # Store the latest processed frame
+frame_lock = threading.Lock()  # Ensure thread safety
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-    # Convert BGR to RGB (MediaPipe works with RGB)
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+@app.route('/upload_frame', methods=['POST'])
+def upload_frame():
+    global latest_frame
+    data = request.json.get('image', '')
 
-    # Process the frame with MediaPipe Pose
-    result = pose.process(rgb_frame)
+    if not data:
+        print("❌ No image data received")
+        return "No image received", 400
 
-    # Draw landmarks if detected
-    if result.pose_landmarks:
-        mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+    try:
+        # Convert base64 image to OpenCV format
+        image_data = base64.b64decode(data.split(',')[1])
+        np_arr = np.frombuffer(image_data, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    # Display output
-    cv2.imshow('Pose Detection', frame)
+        # Convert to RGB for MediaPipe processing
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        result = pose.process(rgb_frame)
 
-    # Exit with 'q' key
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # If pose landmarks are detected, draw them
+        if result.pose_landmarks:
+            print("✅ Pose detected - Drawing landmarks")
+            mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+        else:
+            print("⚠️ No pose landmarks detected")
 
-# Cleanup
-cap.release()
-cv2.destroyAllWindows()
+        # Convert frame back to BGR for OpenCV display
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # Store the processed frame safely
+        with frame_lock:
+            latest_frame = frame.copy()
+
+        return "OK"
+
+    except Exception as e:
+        print(f"❌ Error processing frame: {e}")
+        return "Error processing frame", 500
+
+@app.route('/video_feed')
+def video_feed():
+    def generate():
+        global latest_frame
+        while True:
+            with frame_lock:
+                if latest_frame is None:
+                    continue
+
+                # Encode the frame as JPEG
+                _, buffer = cv2.imencode('.jpg', latest_frame)
+                frame_bytes = buffer.tobytes()
+
+            print("🔄 Sending processed frame to video feed")
+
+            # Send the latest frame immediately
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == "__main__":
+    # Run Flask with SSL (HTTPS)
+    app.run(host='0.0.0.0', port=5001, ssl_context=('cert.pem', 'key.pem'), debug=True)
