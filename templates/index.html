@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Pose Detection (Phone Camera)</title>
+</head>
+<body>
+    <h1>Live Pose Detection (Phone Camera)</h1>
+
+    <!-- Capture video from the phone camera -->
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <!-- Display processed video from Flask -->
+    <h2>Processed Video:</h2>
+    <img id="videoFeed" src="{{ url_for('video_feed') }}" width="640" height="480">
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Get user camera from the phone
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => console.error("❌ Camera error:", error));
+
+        function sendFrame() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL('image/jpeg');
+            fetch('/upload_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            }).catch(error => console.error('❌ Upload error:', error));
+        }
+
+        setInterval(sendFrame, 100);  // Send frames every 100ms
+    </script>
+</body>
+</html>
