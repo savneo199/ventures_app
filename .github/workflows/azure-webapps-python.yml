@@ -36,8 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Azure Login
-        uses: Azure/login@v2.2.0
+     
       - uses: actions/checkout@v4
 
       - name: Set up Python version
@@ -65,6 +64,7 @@ jobs:
             !venv/
 
   deploy:
+    
     permissions:
       contents: none
     runs-on: ubuntu-latest
@@ -74,6 +74,8 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
+      - name: Azure Login
+        uses: Azure/login@v2.2.0
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
