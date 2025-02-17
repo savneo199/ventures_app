@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Pose Detection</title>
+    <title>Live Pose & Hand Detection</title>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -54,10 +54,6 @@
             border-radius: 8px;
         }
 
-        canvas {
-            display: none; /* Hidden since it's used only for capturing frames */
-        }
-
         .footer {
             margin-top: 20px;
             font-size: 14px;
@@ -67,7 +63,7 @@
 </head>
 <body>
 
-    <h1>📷 Live Pose Detection</h1>
+    <h1>📷 Live Pose & Hand Detection</h1>
 
     <div class="container">
 
@@ -94,7 +90,7 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // Get user camera from the phone
+        // Get user camera
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
@@ -111,10 +107,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageData })
-            }).catch(error => console.error('❌ Upload error:', error));
+            })
+            .catch(error => console.error('❌ Upload error:', error));
         }
 
-        setInterval(sendFrame, 100);  // Send frames every 100ms
+        setInterval(sendFrame, 100);
     </script>
 
 </body>
