@@ -4,17 +4,17 @@ import mediapipe as mp
 import numpy as np
 import base64
 import threading
-from hand_recognition import detect_hand  # Import the hand detection function
+from fitness_feedback import analyze_pose  # Import the fitness feedback module
 
 app = Flask(__name__)
 
-# Initialize MediaPipe Pose
+# Initialize MediaPipe Pose and its drawing utilities
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose()
 
-latest_frame = None  # Store the latest processed frame
-frame_lock = threading.Lock()
+latest_frame = None  # Global variable to store the latest processed frame
+frame_lock = threading.Lock()  # Thread lock to safely update latest_frame
 
 @app.route('/')
 def index():
@@ -24,45 +24,42 @@ def index():
 def upload_frame():
     global latest_frame
     data = request.json.get('image', '')
-
     if not data:
         print("❌ No image data received")
         return "No image received", 400
 
     try:
-        # Convert base64 image to OpenCV format
+        # Decode the base64 image to a numpy array and then to a BGR image
         image_data = base64.b64decode(data.split(',')[1])
         np_arr = np.frombuffer(image_data, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)  # Correctly loads in BGR format
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # Flip the image horizontally to fix mirroring
+        # Flip the frame horizontally (correct mirroring)
         frame = cv2.flip(frame, 1)
 
-        # Convert to RGB for MediaPipe processing
+        # Convert the flipped frame to RGB for pose processing
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Process the frame with pose detection
         result = pose.process(rgb_frame)
 
-        # Draw pose landmarks if detected
+        feedback = ""
         if result.pose_landmarks:
-            print("✅ Pose detected - Drawing landmarks")
+            print("✅ Pose landmarks detected")
+            # Draw the landmarks on the original (flipped) frame (which is still in BGR)
             mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            # Get fitness feedback (e.g., for squat form) using the detected landmarks
+            height, width, _ = frame.shape
+            feedback = analyze_pose(result.pose_landmarks, width, height)
+            if feedback:
+                cv2.putText(frame, feedback, (50, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2, cv2.LINE_AA)
+        else:
+            print("❌ No pose landmarks detected")
 
-        # Detect hand and update the frame
-        hand_detected, frame = detect_hand(frame)
-
-        # If a hand is detected, add text overlay
-        if hand_detected:
-            cv2.putText(frame, "🖐 Hand Detected!", (50, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA)
-
-        # Store the processed frame safely
+        # Safely update the global latest_frame
         with frame_lock:
             latest_frame = frame.copy()
 
-        return jsonify({"hand_detected": hand_detected})  # Return detection status
-
+        return jsonify({"feedback": feedback})
     except Exception as e:
         print(f"❌ Error processing frame: {e}")
         return "Error processing frame", 500
@@ -75,27 +72,12 @@ def video_feed():
             with frame_lock:
                 if latest_frame is None:
                     continue
-
-                # Detect if a hand is present in the latest frame
-                hand_detected, frame_with_text = detect_hand(latest_frame.copy())
-
-                # If a hand is detected, overlay text dynamically
-                if hand_detected:
-                    cv2.putText(frame_with_text, "Hand Detected!", (50, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA)
-
-                # Encode the frame as JPEG
-                _, buffer = cv2.imencode('.jpg', frame_with_text)
+                ret, buffer = cv2.imencode('.jpg', latest_frame)
                 frame_bytes = buffer.tobytes()
-
-            print("🔄 Sending processed frame to video feed")
-
-            # Send the latest frame immediately
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == "__main__":
-    # Ensure Flask runs with HTTPS
+    # Run Flask over HTTPS using your certificate and key files
     app.run(host='0.0.0.0', port=5001, ssl_context=('cert.pem', 'key.pem'), debug=True)

@@ -54,11 +54,36 @@
             border-radius: 8px;
         }
 
+        #loadingMessage {
+            font-size: 16px;
+            color: #666;
+            margin-top: 10px;
+            display: block;
+        }
+
+        #handAlert {
+            display: none;
+            background-color: red;
+            color: white;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            border-radius: 8px;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
         .footer {
             margin-top: 20px;
             font-size: 14px;
             color: #777;
         }
+
     </style>
 </head>
 <body>
@@ -71,6 +96,7 @@
         <div class="video-container">
             <h2>🎥 Phone Camera</h2>
             <video id="video" autoplay playsinline></video>
+            <p id="loadingMessage">Loading camera...</p>
         </div>
 
         <!-- Processed Video from Flask -->
@@ -79,23 +105,33 @@
             <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Processed video feed">
         </div>
 
+        <!-- Hand Detection Alert -->
+        <div id="handAlert">✋ Hand Detected!</div>
+
     </div>
 
     <canvas id="canvas"></canvas>
 
-    <p class="footer">Developed with ❤️ by Savvas Neofytou</p>
+    <p class="footer">Developed by Savvas Neofytou</p>
 
     <script>
         const video = document.getElementById('video');
+        const loadingMessage = document.getElementById('loadingMessage');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const handAlert = document.getElementById('handAlert');
 
         // Get user camera
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
+                loadingMessage.style.display = 'none';  // Hide loading message once the camera loads
             })
-            .catch(error => console.error("❌ Camera error:", error));
+            .catch(error => {
+                console.error("❌ Camera error:", error);
+                loadingMessage.innerText = "⚠️ Failed to access camera!";
+                loadingMessage.style.color = "red";
+            });
 
         function sendFrame() {
             canvas.width = video.videoWidth;
@@ -108,10 +144,14 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageData })
             })
+            .then(response => response.json())
+            .then(data => {
+                handAlert.style.display = data.hand_detected ? "block" : "none";
+            })
             .catch(error => console.error('❌ Upload error:', error));
         }
 
-        setInterval(sendFrame, 100);
+        setInterval(sendFrame, 100);  // Send frames every 100ms
     </script>
 
 </body>
