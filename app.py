@@ -6,7 +6,7 @@ import base64
 import threading
 from hand_recognition import detect_hand  # Your existing hand detection module
 from fitness_feedback import analyze_pose  # Import our new fitness feedback module
-
+from waitress import serve
 app = Flask(__name__)
 
 # Initialize MediaPipe Pose
@@ -33,50 +33,38 @@ def upload_frame():
         return "No image received", 400
 
     try:
-        # Decode the base64 image and convert to OpenCV BGR format
+        # Decode the base64 image
         image_data = base64.b64decode(data.split(',')[1])
         np_arr = np.frombuffer(image_data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # Flip the frame horizontally to correct mirroring
-        frame = cv2.flip(frame, 1)
+        frame = cv2.flip(frame, 1)  # Correct mirroring
 
-        # Make a copy for pose processing
+        # Convert to RGB and process with MediaPipe Pose
         frame_proc = frame.copy()
         rgb_frame = cv2.cvtColor(frame_proc, cv2.COLOR_BGR2RGB)
-
-        # Process the frame with pose detection
         result = pose.process(rgb_frame)
 
-        # Draw pose landmarks on the original frame if detected
         if result.pose_landmarks:
             print("✅ Pose detected - Drawing landmarks")
             mp_drawing.draw_landmarks(frame, result.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-        # Get fitness feedback based on the pose (e.g., squat form)
-        height, width, _ = frame.shape
-        feedback = ""
-        if result.pose_landmarks:
-            feedback = analyze_pose(result.pose_landmarks, width, height)
-            if feedback:
-                cv2.putText(frame, feedback, (50, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2, cv2.LINE_AA)
-
-        # Run hand detection on the frame
+        # Run hand detection
         hand_detected, frame = detect_hand(frame)
         if hand_detected:
-            cv2.putText(frame, "🖐 Hand Detected!", (50, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA)
+            print("✅ Hand detected - Updating frame")
 
-        # Update the global latest_frame safely
+        # Update latest_frame
         with frame_lock:
             latest_frame = frame.copy()
+            print("✅ latest_frame updated!")
 
-        return jsonify({"hand_detected": hand_detected, "feedback": feedback})
+        return jsonify({"hand_detected": hand_detected})
 
     except Exception as e:
         print(f"❌ Error processing frame: {e}")
         return "Error processing frame", 500
+
 
 
 @app.route('/video_feed')
@@ -97,5 +85,9 @@ def video_feed():
 
 
 if __name__ == "__main__":
-    # Run Flask with HTTPS using your certificate and key files
     app.run(host='0.0.0.0', port=5001, ssl_context=('cert.pem', 'key.pem'), debug=True)
+    #serve(app, host='0.0.0.0', port=5001)
+
+# clear cache if not working option+command+E
+# run it from run current file
+# on iphone go to http://192.168.1.154:5001
