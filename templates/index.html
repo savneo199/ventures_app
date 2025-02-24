@@ -1,158 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Pose & Hand Detection</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Pose & Hand Detection</title>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet" />
 
-    <!-- CSS Styles -->
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        body {
-            background-color: #f4f4f4;
-            text-align: center;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .video-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-            max-width: 800px;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        video, img {
-            width: 100%;
-            border-radius: 8px;
-        }
-
-        #loadingMessage {
-            font-size: 16px;
-            color: #666;
-            margin-top: 10px;
-            display: block;
-        }
-
-        #handAlert {
-            display: none;
-            background-color: red;
-            color: white;
-            padding: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 20px;
-            border-radius: 8px;
-            animation: pulse 1s infinite alternate;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            100% { opacity: 0.5; }
-        }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #777;
-        }
-
-    </style>
+  <!-- CSS Styles -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background-color: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .video-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      max-width: 800px;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    video, img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    #loadingMessage {
+      font-size: 16px;
+      color: #666;
+      margin-top: 10px;
+      display: block;
+    }
+    #handAlert {
+      display: none;
+      background-color: red;
+      color: white;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 20px;
+      border-radius: 8px;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+    /* Feedback message styling */
+    #feedbackMessage {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .feedback-start {
+      background-color: blue;
+      color: white;
+    }
+    .feedback-good {
+      background-color: green;
+      color: white;
+    }
+    .feedback-bad {
+      background-color: red;
+      color: white;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #777;
+    }
+  </style>
 </head>
 <body>
 
-    <h1>📷 Live Pose & Hand Detection</h1>
+  <h1>📷 Live Pose & Hand Detection</h1>
 
-    <div class="container">
-
-        <!-- Camera Preview from Phone -->
-        <div class="video-container">
-            <h2>🎥 Phone Camera</h2>
-            <video id="video" autoplay playsinline></video>
-            <p id="loadingMessage">Loading camera...</p>
-        </div>
-
-        <!-- Processed Video from Flask -->
-        <div class="video-container">
-            <h2>🔍 Processed Video</h2>
-            <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Processed video feed">
-        </div>
-
-        <!-- Hand Detection Alert -->
-        <div id="handAlert">✋ Hand Detected!</div>
-
+  <div class="container">
+    <!-- Camera Preview from Phone -->
+    <div class="video-container">
+      <h2>🎥 Phone Camera</h2>
+      <video id="video" autoplay playsinline></video>
+      <p id="loadingMessage">Loading camera...</p>
     </div>
 
-    <canvas id="canvas"></canvas>
+    <!-- Fitness Feedback Message displayed above the Processed Video -->
+    <div id="feedbackMessage"></div>
 
-    <p class="footer">Developed by Savvas Neofytou</p>
+    <!-- Processed Video from Flask -->
+    <div class="video-container">
+      <h2>🔍 Processed Video</h2>
+      <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Processed video feed" />
+    </div>
 
-    <script>
-        const video = document.getElementById('video');
-        const loadingMessage = document.getElementById('loadingMessage');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const handAlert = document.getElementById('handAlert');
+    <!-- Hand Detection Alert -->
+    <div id="handAlert">✋ Hand Detected!</div>
+  </div>
 
-        // Get user camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                loadingMessage.style.display = 'none';  // Hide loading message once the camera loads
-            })
-            .catch(error => {
-                console.error("❌ Camera error:", error);
-                loadingMessage.innerText = "⚠️ Failed to access camera!";
-                loadingMessage.style.color = "red";
-            });
+  <canvas id="canvas"></canvas>
 
-        function sendFrame() {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  <p class="footer">Developed by Savvas Neofytou</p>
 
-            const imageData = canvas.toDataURL('image/jpeg');
-            fetch('/upload_frame', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageData })
-            })
-            .then(response => response.json())
-            .then(data => {
-                handAlert.style.display = data.hand_detected ? "block" : "none";
-            })
-            .catch(error => console.error('❌ Upload error:', error));
+  <script>
+    const video = document.getElementById('video');
+    const loadingMessage = document.getElementById('loadingMessage');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const handAlert = document.getElementById('handAlert');
+    const feedbackMessage = document.getElementById('feedbackMessage');
+
+    // Get user camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        loadingMessage.style.display = 'none';  // Hide loading message once the camera loads
+      })
+      .catch(error => {
+        console.error("❌ Camera error:", error);
+        loadingMessage.innerText = "⚠️ Failed to access camera!";
+        loadingMessage.style.color = "red";
+      });
+
+    function sendFrame() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL('image/jpeg');
+      fetch('/upload_frame', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Display hand alert if a hand is detected
+        handAlert.style.display = data.hand_detected ? "block" : "none";
+        // Update the fitness feedback message and adjust the styling based on its content
+        feedbackMessage.innerText = data.feedback;
+        feedbackMessage.classList.remove("feedback-start", "feedback-good", "feedback-bad");
+        if (data.feedback.includes("Stand tall")) {
+          feedbackMessage.classList.add("feedback-start");
+        } else if (data.feedback.includes("Good squat form")) {
+          feedbackMessage.classList.add("feedback-good");
+        } else if (data.feedback.includes("Too low") || data.feedback.includes("Lower your hips further")) {
+          feedbackMessage.classList.add("feedback-bad");
         }
+      })
+      .catch(error => console.error('❌ Upload error:', error));
+    }
 
-        setInterval(sendFrame, 100);  // Send frames every 100ms
-    </script>
+    setInterval(sendFrame, 100);  // Send frames every 100ms
+  </script>
 
 </body>
 </html>
